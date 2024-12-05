@@ -3,11 +3,11 @@
 #include <dirent.h>
 #include <string.h>
 
-FILE *fp;
-int qt = 0, Linha = 1;
+FILE *fp; //Para abrir o arquivo
+int qt = 0; // Contador da palavra pesquisada
 char ch[900];
-DIR *dp;
-struct dirent *ep;
+DIR *dp; //  Buscar o arquivo diretorio variável
+struct dirent *ep; // Sctrut de diferent 
 
 char palavra[1000][900];
 
@@ -15,7 +15,7 @@ char palavra[1000][900];
 void verificar_letra_arquivo(const char *caminho, const char *nome) {
     
     // Isso faz a junção do caminho do diretório mais o nome do arquivo aberto na funçao abrir aquivo
-    char caminho_completo[1024];
+    char caminho_completo[1000];
     snprintf(caminho_completo, sizeof(caminho_completo), "%s/%s", caminho, nome);
 
     // Abre o arquivo
@@ -32,10 +32,20 @@ void verificar_letra_arquivo(const char *caminho, const char *nome) {
             qt++;
         }
     }
-    
+
     //Imprimir quanta vezes a palavra aparece em cada arquivo. 
-    printf("A palavra 'tecnologia' foi encontrada %d vez(es) no texto.\n\n", qt);
+    //printf("A palavra 'tecnologia' foi encontrada %d vez(es) no texto.\n\n", qt);
+    
+    // Função ranking em desenvolvimento ainda
+    ranking(nome,qt);
     fclose(fp);
+    
+}
+
+//Falta terminar essa função (Pensando como vou fazer ainda)
+void ranking(const char *nome, int qt){
+   printf("A palavra 'tecnologia' foi encontrada %d vez(es) no texto.\n\n", qt);
+
 }
 
 // Função para abrir os arquivos no diretório. 
