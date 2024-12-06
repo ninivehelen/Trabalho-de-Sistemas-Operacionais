@@ -44,25 +44,25 @@ void verificar_letra_arquivo(const char *caminho, const char *nome) {
 
 //Falta terminar essa função (Pensando como vou fazer ainda)  fazer a ordem crescente da quantidade da palavra que aparece.  
 void ranking(const char *nome, int qt){
-   int i, j, numero[100],a ;
-    scanf("%d", &numero[qt]);
-
+   int i, j, numeros_arq[100], numero[100],a ;
+    numeros_arq[i] = qt;
+    
    for (i = 0; i < qt; ++i) 
 {
     for (j = i + 1; j < qt; ++j)
     {
-        if (numero[i] > numero[j])
+        if (numeros_arq[i] > numeros_arq[j])
         {
-            a =  numero[i];
-            numero[i] = numero[j];
-            numero[j] = a;
+            a =  numeros_arq[i];
+            numeros_arq[i] = numeros_arq[j];
+            numeros_arq[j] = a;
         }
     }
-}
 
-   printf("%d\n", numero[i]);
-   printf("Arquivo: %s\n", nome);
-   printf("A palavra 'tecnologia' foi encontrada %d vez(es) no texto.\n\n", qt);
+}
+printf("The numbers arranged in ascending order are given below \n");
+for (i = 0; i < qt; ++i)
+    printf("%d\n", numeros_arq[i]);
 
 }
 // Função para abrir os arquivos no diretório. 
