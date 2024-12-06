@@ -42,12 +42,29 @@ void verificar_letra_arquivo(const char *caminho, const char *nome) {
     
 }
 
-//Falta terminar essa função (Pensando como vou fazer ainda)
+//Falta terminar essa função (Pensando como vou fazer ainda)  fazer a ordem crescente da quantidade da palavra que aparece.  
 void ranking(const char *nome, int qt){
+   int i, j, numero[100],a ;
+    scanf("%d", &numero[qt]);
+
+   for (i = 0; i < qt; ++i) 
+{
+    for (j = i + 1; j < qt; ++j)
+    {
+        if (numero[i] > numero[j])
+        {
+            a =  numero[i];
+            numero[i] = numero[j];
+            numero[j] = a;
+        }
+    }
+}
+
+   printf("%d\n", numero[i]);
+   printf("Arquivo: %s\n", nome);
    printf("A palavra 'tecnologia' foi encontrada %d vez(es) no texto.\n\n", qt);
 
 }
-
 // Função para abrir os arquivos no diretório. 
 void abrir_arquivo(void) {
     const char *caminho = "/home/ninive/Área de Trabalho/trabalho_so/pasta_arquivo";
