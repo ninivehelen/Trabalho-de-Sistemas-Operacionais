@@ -19,8 +19,9 @@ int contar_ocorrencias(const char *caminho_arquivo) {
         perror("Erro ao abrir arquivo");
         return -1;
     }
-
+    // Capturar nome 
     int count = 0;
+    get('
     while (fscanf(fp, "%s", palavra) != EOF) {
         if (strcmp(palavra, "tecnologia") == 0) {
             count++;
