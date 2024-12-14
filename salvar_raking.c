@@ -1,24 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Função para salvar o ranking em um txt chamado Ranking.txt
 int salvar_ranking(const char *arquivo_nome, int qtd_palavra) {
-    FILE *pont_arq; // Cria um ponteiro para o arquivo
-    // Abrindo o arquivo no modo de anexação ("a"), para não sobrescrever o conteúdo toda vez
-    pont_arq = fopen("Ranking.txt", "a");  // Usa "a" para adicionar dados ao final do arquivo
+    FILE *pont_arq; // File pointer
+    pont_arq = fopen("Ranking.txt", "a"); // Abre arquivo e cria caso não tenha ainda 
     
-    // Verificando se o arquivo foi aberto com sucesso
     if (pont_arq == NULL) {
-        printf("Erro na abertura do arquivo!");
+        printf("Erro na abertura do arquivo!\n");
         return 1;
     }
     
-    // Usando fprintf para armazenar os dados no arquivo
-    fprintf(pont_arq, "%s: %i\n", arquivo_nome, qtd_palavra);  // Adiciona ":" entre o nome e a quantidade 
-    
-    // Fechando o arquivo
+  // Salvando nome do arquivo e a quantidade de palavra pesquisada pelo usário em cada arquivo apenas o top 10
+   fprintf(pont_arq, "%s: %i\n\n", arquivo_nome, qtd_palavra);  
+
     fclose(pont_arq);
-    
-    // Mensagem de confirmação
     printf("Dados gravados com sucesso!\n");
     return 0;
 }
