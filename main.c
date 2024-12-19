@@ -5,120 +5,168 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
-#include "salvar_raking.c"
+#include <pthread.h>
+#include "salvar_ranking.c"
 #include "conta_ocorrencia.c"
 
 // Struct para armazenar informações sobre o arquivo e a contagem de ocorrências
-
 typedef struct arquivo_informacoes {
     char nome[300];
     int ocorrencias;
-    time_t ultimo_tempo; // Timestamp da ultima modificação
+    time_t ultimo_tempo; // Timestamp da última modificação
 } arquivo_informacoes;
+
+// Struct para os dados do caminho e palavra
+typedef struct {
+    char palavra[100];
+    char caminho_arquivo[520];
+} arquivo_dados;
+
+// Variáveis globais
+#define total_arquivos 10000
+arquivo_informacoes ranking[total_arquivos]; // Ranking de arquivos
+int quantidade_arquivos = 0;               // Número de arquivos no ranking
+pthread_mutex_t ranking_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex para proteger o ranking
+
+// Função para atualizar o ranking
+void atualizar_ranking(arquivo_informacoes *info) {
+    pthread_mutex_lock(&ranking_mutex);
+    ranking[quantidade_arquivos] = *info;
+    quantidade_arquivos++;
+    pthread_mutex_unlock(&ranking_mutex);
+}
 
 // Função de comparação para o qsort (ordem decrescente de contagem)
 int comparacao_ranking(const void *a, const void *b) {
     return ((arquivo_informacoes *)b)->ocorrencias - ((arquivo_informacoes *)a)->ocorrencias;
 }
 
-// Função para monitorar o diretório
-void monitora_diretorio(const char *caminho_arquivo, const char *palavra) {
-    arquivo_informacoes ranking[1000];  // Armazena quantidade ranking
-    int quantidade_arquivos = 0;
+// Função de monitoramento do diretório
+void *monitora_diretorio(void *arg) {
+    arquivo_dados *arquivo_dado = (arquivo_dados *)arg;
+    const char *caminho_arquivo = arquivo_dado->caminho_arquivo;
+    const char *palavra = arquivo_dado->palavra;
 
     while (1) {
-        struct dirent *entrada; // Dirent propria do c 
-        struct stat infomacao_arquivo; // stat propria do c 
-        DIR *diretorio = opendir(caminho_arquivo); // Dir propria do c 
-
+        struct dirent *entrada;
+        struct stat infomacao_arquivo;
+        DIR *diretorio = opendir(caminho_arquivo);
         if (diretorio == NULL) {
-            perror("Diretório não encontrado");
+            perror("Erro ao abrir o diretório");
             exit(EXIT_FAILURE);
         }
 
-        printf("Verificando diretório: %s\n", caminho_arquivo);
-
         while ((entrada = readdir(diretorio)) != NULL) {
-            // Ignorar . e ..
             if (strcmp(entrada->d_name, ".") == 0 || strcmp(entrada->d_name, "..") == 0)
                 continue;
 
-            char caminho_arquivo_completo[512];
+            char caminho_arquivo_completo[2048];
             snprintf(caminho_arquivo_completo, sizeof(caminho_arquivo_completo), "%s/%s", caminho_arquivo, entrada->d_name);
 
-            // Captura a modificação
             if (stat(caminho_arquivo_completo, &infomacao_arquivo) == -1) {
-                perror("Nenhum arquivo");
+                perror("Erro ao obter informações do arquivo");
                 continue;
             }
 
-            // Verificar se é uma rquivo regular
             if (S_ISREG(infomacao_arquivo.st_mode)) {
-                // Verifica se o arquivo foi modificado
-                int modificado = 1;
+                pthread_mutex_lock(&ranking_mutex);
+
+                int encontrado = 0;
                 for (int i = 0; i < quantidade_arquivos; i++) {
                     if (strcmp(ranking[i].nome, entrada->d_name) == 0) {
-                        if (ranking[i].ultimo_tempo == infomacao_arquivo.st_mtime) {
-                            modificado = 0; // Se não tem mudança
-                        } else {
-                            ranking[i].ultimo_tempo = infomacao_arquivo.st_mtime; // Atualiza timestamp
+                        encontrado = 1;
+
+                        // Atualizar apenas se o arquivo foi modificado
+                        if (ranking[i].ultimo_tempo != infomacao_arquivo.st_mtime) {
+                            int count = busca_palavra_grep(caminho_arquivo_completo, palavra);
+                            ranking[i].ocorrencias = count;
+                            ranking[i].ultimo_tempo = infomacao_arquivo.st_mtime;
                         }
                         break;
                     }
                 }
 
-                // Se é novo contar novamente as palavras no arquivo
-                if (modificado) {
+                if (!encontrado) {
+                    // Arquivo novo, adicionar ao ranking
                     int count = busca_palavra_grep(caminho_arquivo_completo, palavra);
                     if (count > 0) {
-                        //  Guarda a quantidade
-                        strncpy(ranking[quantidade_arquivos].nome, entrada->d_name, sizeof(ranking[quantidade_arquivos].nome));
-                        ranking[quantidade_arquivos].ocorrencias = count;
-                        ranking[quantidade_arquivos].ultimo_tempo = infomacao_arquivo.st_mtime;
-                        quantidade_arquivos++;
+                        arquivo_informacoes info;
+                        strncpy(info.nome, entrada->d_name, sizeof(info.nome));
+                        info.ocorrencias = count;
+                        info.ultimo_tempo = infomacao_arquivo.st_mtime;
+
+                        if (quantidade_arquivos < total_arquivos) {
+                            ranking[quantidade_arquivos] = info;
+                            quantidade_arquivos++;
+                        }
                     }
                 }
+
+                pthread_mutex_unlock(&ranking_mutex);
             }
         }
 
         closedir(diretorio);
-
-        // Mostrar em ordem Decrescente 
-        qsort(ranking, quantidade_arquivos, sizeof(arquivo_informacoes), comparacao_ranking);
-
-        // Mostrar os 10 primeiros
-        printf("\nTop 10 arquivos que mais tem a palavra procurada pelo usuário '%s':\n", palavra);
-        for (int i = 0; i < quantidade_arquivos && i < 10; i++) {
-            printf("%d. %s - %d quantidade\n", i + 1, ranking[i].nome, ranking[i].ocorrencias);
-            salvar_ranking(ranking[i].nome, ranking[i].ocorrencias);
-        }
-        
-        
-        sleep(5); // Uma pausa antes de verificar novamente
+        sleep(5);
     }
 }
 
-#include <stdio.h>
-#include <string.h>
+// Função para processar, exibir e salvar o ranking
+void *processa_ranking(void *arg) {
+    const char *palavra = (const char *)arg;
+
+    while (1) {
+        pthread_mutex_lock(&ranking_mutex);
+
+        // Ordenar o ranking
+        qsort(ranking, quantidade_arquivos, sizeof(arquivo_informacoes), comparacao_ranking);
+
+        // Exibir os 10 melhores
+        printf("\nTop 10 arquivos com a palavra '%s':\n", palavra);
+
+        // Abrir arquivo para salvar ranking
+        FILE *ranking_arquivo = fopen("ranking.txt", "w");
+        if (ranking_arquivo == NULL) {
+            perror("Erro ao abrir o arquivo ranking.txt");
+            pthread_mutex_unlock(&ranking_mutex);
+            exit(EXIT_FAILURE);
+        }
+
+        for (int i = 0; i < quantidade_arquivos && i < 10; i++) {
+            printf("%d. %s - %d Total\n", i + 1, ranking[i].nome, ranking[i].ocorrencias);
+            fprintf(ranking_arquivo, "%d. %s - %d Total\n", i + 1, ranking[i].nome, ranking[i].ocorrencias);
+            salvar_ranking(ranking[i].nome, ranking[i].ocorrencias); // Função  para salvar no formato desejado
+        }
+
+        fclose(ranking_arquivo); // Fechar o arquivo após salvar
+        pthread_mutex_unlock(&ranking_mutex);
+
+        sleep(5);
+    }
+}
 
 // Função principal
 int main() {
-    char caminho_arquivo[512];
-    char palavra[100];
-    
-    // Capturando o caminho do diretório digitado pelo usuário
-    printf("Digite o caminho do diretório: ");
-    fgets(caminho_arquivo, sizeof(caminho_arquivo), stdin);
-    
-    // Remover o caractere de nova linha, se houver
-    caminho_arquivo[strcspn(caminho_arquivo, "\n")] = '\0';
-    
-    // Capturando a palavra digitada pelo usuário
-    printf("Digite a palavra a ser pesquisada: ");
-    scanf("%s", palavra);
+    arquivo_dados arquivo_dado;
 
-    // Chama a função monitora diretorio que verifica se o arquivo foi alterado ou excluído e atualizar o ranking
-    monitora_diretorio(caminho_arquivo, palavra);
+    // Entrada do usuário para o caminho do diretório
+    printf("Digite o caminho do diretório: ");
+    fgets(arquivo_dado.caminho_arquivo, sizeof(arquivo_dado.caminho_arquivo), stdin);
+    arquivo_dado.caminho_arquivo[strcspn(arquivo_dado.caminho_arquivo, "\n")] = '\0';
+
+    // Entrada do usuário para a palavra a ser pesquisada
+    printf("Digite a palavra a ser pesquisada: ");
+    scanf("%s", arquivo_dado.palavra);
+
+    // Criação das 2 threads, monitora diretorio e a de ranking
+    pthread_t thread_monitora, thread_ranking;
+
+    pthread_create(&thread_monitora, NULL, monitora_diretorio, (void *)&arquivo_dado);
+    pthread_create(&thread_ranking, NULL, processa_ranking, (void *)arquivo_dado.palavra);
+
+    // Aguardar threads
+    pthread_join(thread_monitora, NULL);
+    pthread_join(thread_ranking, NULL);
 
     return 0;
 }

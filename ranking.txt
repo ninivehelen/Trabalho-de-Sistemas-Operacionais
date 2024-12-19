@@ -1,0 +1,5 @@
+1. teste1.txt - 9 Total
+2. teste2.txt - 3 Total
+3. teste3.txt - 2 Total
+4. teste.txt - 1 Total
+5. texte4.txt - 1 Total

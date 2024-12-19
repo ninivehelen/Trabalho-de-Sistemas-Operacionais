@@ -6,23 +6,23 @@
 #include <unistd.h>
 #include <time.h>
 
-// Função para contar a ocorrência de uma palavra em um arquivo usando o comando `grep`
+// Função para buscar a palavra digitada pelo usuário usando grep
 int busca_palavra_grep(const char *caminho_arquivo, const char *palavra) {
     char comando[512];
-    snprintf(comando, sizeof(comando), "grep -o '%s' '%s' | wc -l", palavra, caminho_arquivo);
-    
-    FILE *fp = popen(comando, "r");
+    snprintf(comando, sizeof(comando), "grep -woi '\\b%s\\b' '%s' | wc -l", palavra, caminho_arquivo);
+
+    FILE *fp = popen(comando, "r");  // Executa o comando e pegar a saída
     if (fp == NULL) {
-        perror("Erro no comando grep");
-        return 0;
+        perror("Erro ao executar o comando grep");
+        return -1;
     }
 
-    int count = 0;
-    if (fscanf(fp, "%d", &count) != 1) {
-        perror("Erro na saída do comando grep");
-        count = 0;
-    }
+    int count;
+    fscanf(fp, "%d", &count);  // Lê a contagem do comando
+    pclose(fp);
 
-    fclose(fp);
-    return count;
+    // Exibe o nome do caminho_arquivo e a contagem
+    printf("Arquivo: %s | total '%s': %d\n", caminho_arquivo, palavra, count);
+
+    return count;  // Retorna a contagem
 }
